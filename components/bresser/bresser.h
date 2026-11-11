@@ -69,7 +69,7 @@ namespace bresser {
         float    wind_avg_meter_sec;
         bool     rain_ok;              // only 6-in-1
         float    rain_mm;
-        bool     battery_ok;           // value of the battery flag
+        bool     battery_low;          // station reports low battery (true = low)
         bool     battery_valid;        // frame carries a battery flag
         bool     startup;              // true = station reset/power-up within the last ~1 h
         bool     moisture_ok;          // only 6-in-1

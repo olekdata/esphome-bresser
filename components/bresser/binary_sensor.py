@@ -5,15 +5,15 @@ from esphome.const import (
     DEVICE_CLASS_BATTERY,
     DEVICE_CLASS_POWER,
     ENTITY_CATEGORY_DIAGNOSTIC,
-    ICON_EMPTY,
-    ICON_BATTERY,
 )
 
 from . import CONF_Bresser_ID, Bresser
 
-# Battery: On = battery good, Off = the station reports a low battery.
-# The flag is only carried by some frame types (see the 6-in-1 notes in
-# the README), so the entity updates when a frame carrying it arrives.
+# Battery: On = battery low, Off = battery normal - this matches the
+# Home Assistant convention for battery-class binary sensors (the
+# battery.is_low condition and the Maintenance dashboard read it this
+# way). The flag is only carried by some frame types (see the README),
+# so the entity updates when a frame carrying it arrives.
 #
 # Startup: On while the station has been running for less than about one
 # hour since it was powered on or reset (e.g. after a battery change) -
@@ -23,7 +23,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(CONF_Bresser_ID): cv.use_id(Bresser),
         cv.Optional('battery'): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_BATTERY,
-            icon=ICON_BATTERY,
+            icon='mdi:battery-alert',
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
         cv.Optional('startup'): binary_sensor.binary_sensor_schema(

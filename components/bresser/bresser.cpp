@@ -248,7 +248,7 @@ static const char *TAG = "Bresser";
         int rain_raw = (msg[23] & 0x0f) + ((msg[23] & 0xf0) >> 4) * 10 + (msg[24] & 0x0f) * 100;
         pOut->rain_mm = rain_raw * 0.1f;
 
-        pOut->battery_ok    = (msg[25] & 0x80) ? false : true;   // msg[25] bit 7: 0 = OK, 1 = low
+        pOut->battery_low   = (msg[25] & 0x80) != 0;             // msg[25] bit 7: 0 = OK, 1 = low
         pOut->battery_valid = true;                              // 5-in-1 frames carry all fields
         pOut->startup       = (msg[15] & 0x80) == 0;             // msg[15] bit 7: 0 after reset, 1 after ~1 h
 
@@ -368,7 +368,7 @@ static const char *TAG = "Bresser";
         // temperature/humidity frames carry it - on rain frames msg[13]
         // holds rain-counter BCD digits, so the flag is invalid there.
         // Must be read before the rain decoding below XORs msg[13].
-        pOut->battery_ok    = (msg[13] >> 1) & 1;
+        pOut->battery_low   = ((msg[13] >> 1) & 1) == 0; // bit set = good, cleared = low
         pOut->battery_valid = pOut->temp_ok;
 
         // apparently ff0(1) if not available
@@ -479,7 +479,7 @@ static const char *TAG = "Bresser";
 
         ESP_LOGV(TAG,"Id: [0x%08X] Battery: [%s] Startup: [%d] ",
             (unsigned) frame_.sensor_id,
-            frame_.battery_valid ? (frame_.battery_ok ? "OK " : "Low") : " - ",
+            frame_.battery_valid ? (frame_.battery_low ? "Low" : "OK ") : " - ",
             frame_.startup ? 1 : 0);
         if (this->model_ == BRESSER_MODEL_6IN1) {
             ESP_LOGV(TAG,"Ch: [%d] ", frame_.chan);
@@ -531,7 +531,7 @@ static const char *TAG = "Bresser";
         // frames use the same field for the rain counter) - keep the last
         // known value until a frame carrying it arrives.
         if (frame_.battery_valid) {
-            this->buf_.battery_ok    = frame_.battery_ok;
+            this->buf_.battery_low   = frame_.battery_low;
             this->buf_.battery_valid = true;
         }
 
@@ -594,7 +594,7 @@ static const char *TAG = "Bresser";
 
         // Station metadata - present in every decoded frame
         if (this->battery_binary_sensor_ != nullptr && this->buf_.battery_valid)
-            this->battery_binary_sensor_->publish_state(this->buf_.battery_ok);
+            this->battery_binary_sensor_->publish_state(this->buf_.battery_low);  // ON = low (HA battery convention)
         if (this->startup_binary_sensor_ != nullptr)
             this->startup_binary_sensor_->publish_state(this->buf_.startup);
         // Station ID is a 32-bit identifier - exceeds float precision,
