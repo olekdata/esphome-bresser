@@ -40,6 +40,7 @@
 #include "esphome/core/component.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
+#include "esphome/components/binary_sensor/binary_sensor.h"
 
 namespace esphome {
 namespace bresser {
@@ -68,7 +69,9 @@ namespace bresser {
         float    wind_avg_meter_sec;
         bool     rain_ok;              // only 6-in-1
         float    rain_mm;
-        bool     battery_ok;
+        bool     battery_ok;           // value of the battery flag
+        bool     battery_valid;        // frame carries a battery flag
+        bool     startup;              // true = station reset/power-up within the last ~1 h
         bool     moisture_ok;          // only 6-in-1
         int      moisture;             // only 6-in-1
     };
@@ -90,6 +93,7 @@ class Bresser : public PollingComponent  {
 	void set_rain_sensor(sensor::Sensor *rain_sensor) { rain_sensor_ = rain_sensor; }
 	void set_wind_gust_sensor(sensor::Sensor *wind_gust_sensor) { wind_gust_sensor_ = wind_gust_sensor; }
 	void set_battery_sensor(sensor::Sensor *battery_sensor) { battery_sensor_ = battery_sensor; }
+	void set_startup_binary_sensor(binary_sensor::BinarySensor *startup_binary_sensor) { startup_binary_sensor_ = startup_binary_sensor; }
 	void set_sensor_id_text_sensor(text_sensor::TextSensor *sensor_id_text_sensor) { sensor_id_text_sensor_ = sensor_id_text_sensor; }
 	void set_foreign_sensor_ids_text_sensor(text_sensor::TextSensor *foreign_sensor_ids_text_sensor) { foreign_sensor_ids_text_sensor_ = foreign_sensor_ids_text_sensor; }
 	void set_sensor_type_sensor(sensor::Sensor *sensor_type_sensor) { sensor_type_sensor_ = sensor_type_sensor; }
@@ -157,6 +161,7 @@ class Bresser : public PollingComponent  {
 	sensor::Sensor *rain_sensor_{nullptr};
 	sensor::Sensor *wind_gust_sensor_{nullptr};
 	sensor::Sensor *battery_sensor_{nullptr};
+	binary_sensor::BinarySensor *startup_binary_sensor_{nullptr};
 	text_sensor::TextSensor *sensor_id_text_sensor_{nullptr};
 	text_sensor::TextSensor *foreign_sensor_ids_text_sensor_{nullptr};
 	sensor::Sensor *sensor_type_sensor_{nullptr};

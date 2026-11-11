@@ -106,6 +106,14 @@ text_sensor:
     # handy for finding your own station's id before configuring the filter.
     foreign_sensor_ids:
       name: "Stacje obce"
+
+binary_sensor:
+  - platform: bresser
+    # On while the station has been running for less than ~1 h since its
+    # last power-up/reset (battery change) - explains a rain counter that
+    # reads 0.0 mm right after the batteries were swapped.
+    startup:
+      name: "Restart stacji"
 ```
 
 ## Notes
@@ -119,6 +127,12 @@ text_sensor:
 - The station ID is a 32-bit identifier which exceeds float precision,
   hence the `text_sensor` platform for it.
 - Omitting any entity from YAML is safe - all publishes are null-checked.
+- Battery flag (6-in-1): `msg[13]` bit 1 is `battery_good`, not the
+  commonly assumed bit 3 of `msg[6]` - that one is the startup flag, so
+  reading it as battery reports "low" for about an hour after every
+  power-up/reset of the station (upstream bug, see rtl_433 #1993).
+  Rain frames carry the rain counter in `msg[13]`, so the battery entity
+  only updates from temperature/humidity frames.
 
 ## Connection example
 

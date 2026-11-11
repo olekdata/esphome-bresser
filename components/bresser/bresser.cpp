@@ -248,7 +248,9 @@ static const char *TAG = "Bresser";
         int rain_raw = (msg[23] & 0x0f) + ((msg[23] & 0xf0) >> 4) * 10 + (msg[24] & 0x0f) * 100;
         pOut->rain_mm = rain_raw * 0.1f;
 
-        pOut->battery_ok = (msg[25] & 0x80) ? false : true;
+        pOut->battery_ok    = (msg[25] & 0x80) ? false : true;   // msg[25] bit 7: 0 = OK, 1 = low
+        pOut->battery_valid = true;                              // 5-in-1 frames carry all fields
+        pOut->startup       = (msg[15] & 0x80) == 0;             // msg[15] bit 7: 0 after reset, 1 after ~1 h
 
         return DECODE_OK;
     }
@@ -271,7 +273,7 @@ static const char *TAG = "Bresser";
     https://www.bresser.de/en/Weather-Time/Accessories/EXPLORE-SCIENTIFIC-Soil-Moisture-and-Soil-Temperature-Sensor.html
     Moisture:
         f16e 187000e34 7 ffffff0000 252 2 16 fff 004 000 [25,2, 99%, CH 7]
-        DIGEST:8h8h ID?8h8h8h8h FLAGS:4h BATT:1b CH:3d 8h 8h8h 8h8h TEMP:12h 4h MOIST:8h TRAILER:8h8h8h8h4h
+        DIGEST:8h8h ID?8h8h8h8h STYPE:4h STARTUP:1b CH:3d 8h 8h8h 8h8h TEMP:12h 4h MOIST:8h TRAILER:8h8h8h8h4h
     Moisture is transmitted in the humidity field as index 1-16: 0, 7, 13, 20, 27, 33, 40, 47, 53, 60, 67, 73, 80, 87, 93, 99.
     {206}55555555545ba83e803100058631ff11fe6611ffffffff01cc00 [Hum 96% Temp 3.8 C Wind 0.7 m/s]
     {205}55555555545ba999263100058631fffffe66d006092bffe0cff8 [Hum 95% Temp 3.0 C Wind 0.0 m/s]
@@ -300,8 +302,8 @@ static const char *TAG = "Bresser";
     {150} 5c e4 18 80 02 c3 18 fb ba fc 26 98 11 84 81 ff f0 16 00 [Temp 11.8 C  Hum 81%]
     {148} d0 bd 18 80 02 c3 18 f9 ad fa 26 48 ff ff ff fe 02 ff f0
     Wind and Temperature/Humidity or Rain:
-        DIGEST:8h8h ID:8h8h8h8h FLAGS:4h BATT:1b CH:3d WSPEED:~8h~4h ~4h~8h WDIR:12h ?4h TEMP:8h.4h ?4h HUM:8h UV?~12h ?4h CHKSUM:8h
-        DIGEST:8h8h ID:8h8h8h8h FLAGS:4h BATT:1b CH:3d WSPEED:~8h~4h ~4h~8h WDIR:12h ?4h RAINFLAG:8h RAIN:8h8h UV:8h8h CHKSUM:8h
+        DIGEST:8h8h ID:8h8h8h8h STYPE:4h STARTUP:1b CH:3d WSPEED:~8h~4h ~4h~8h WDIR:12h ?4h TEMP:8h.4h TNEG:1b ?1b BATT:1b ?1b HUM:8h UV?~12h RAINFLAG:4h CHKSUM:8h
+        DIGEST:8h8h ID:8h8h8h8h STYPE:4h STARTUP:1b CH:3d WSPEED:~8h~4h ~4h~8h WDIR:12h ?4h RAIN:~24h .......................... RAINFLAG:4h CHKSUM:8h
     Digest is LFSR-16 gen 0x8810 key 0x5412, excluding the add-checksum and trailer.
     Checksum is 8-bit add (with carry) to 0xff.
     Notes on different sensors:
@@ -346,7 +348,10 @@ static const char *TAG = "Bresser";
 
         pOut->sensor_id  = ((uint32_t)msg[2] << 24) | (msg[3] << 16) | (msg[4] << 8) | (msg[5]);
         pOut->s_type     = (msg[6] >> 4); // 1: weather station, 2: indoor?, 4: soil probe
-        pOut->battery_ok = (msg[6] >> 3) & 1;
+        // Raw bit 3 of msg[6] is 0 right after a power-on/reset and 1 from
+        // about an hour on (rtl_433 #1214) - so "startup" = reset within ~1 h,
+        // which also means the rain counter has just been cleared.
+        pOut->startup = (msg[6] & 0x8) == 0;
         pOut->chan       = (msg[6] & 0x7);
 
         // temperature, humidity, shared with rain counter, only if valid BCD digits
@@ -357,6 +362,14 @@ static const char *TAG = "Bresser";
             temp_c = (temp_raw - 1000) * 0.1f;
         pOut->temp_c   = temp_c;
         pOut->humidity = (msg[14] >> 4) * 10 + (msg[14] & 0x0f);
+
+        // Battery flag: msg[13] bit 1 is battery_good (rtl_433 #1993,
+        // verified against the station console's low-battery icon). Only
+        // temperature/humidity frames carry it - on rain frames msg[13]
+        // holds rain-counter BCD digits, so the flag is invalid there.
+        // Must be read before the rain decoding below XORs msg[13].
+        pOut->battery_ok    = (msg[13] >> 1) & 1;
+        pOut->battery_valid = pOut->temp_ok;
 
         // apparently ff0(1) if not available
         pOut->uv_ok  = msg[15] <= 0x99 && (msg[16] & 0xf0) <= 0x90;
@@ -464,9 +477,10 @@ static const char *TAG = "Bresser";
             return;
         }
 
-        ESP_LOGV(TAG,"Id: [0x%08X] Battery: [%s] ",
+        ESP_LOGV(TAG,"Id: [0x%08X] Battery: [%s] Startup: [%d] ",
             (unsigned) frame_.sensor_id,
-            frame_.battery_ok ? "OK " : "Low");
+            frame_.battery_valid ? (frame_.battery_ok ? "OK " : "Low") : " - ",
+            frame_.startup ? 1 : 0);
         if (this->model_ == BRESSER_MODEL_6IN1) {
             ESP_LOGV(TAG,"Ch: [%d] ", frame_.chan);
         }
@@ -512,7 +526,14 @@ static const char *TAG = "Bresser";
         this->buf_.sensor_id  = frame_.sensor_id;
         this->buf_.s_type     = frame_.s_type;
         this->buf_.chan       = frame_.chan;
-        this->buf_.battery_ok = frame_.battery_ok;
+        this->buf_.startup    = frame_.startup;
+        // The battery flag is not carried by every frame type (6-in-1 rain
+        // frames use the same field for the rain counter) - keep the last
+        // known value until a frame carrying it arrives.
+        if (frame_.battery_valid) {
+            this->buf_.battery_ok    = frame_.battery_ok;
+            this->buf_.battery_valid = true;
+        }
 
         if (frame_.temp_ok) {
             this->buf_.temp_ok  = true;
@@ -572,8 +593,10 @@ static const char *TAG = "Bresser";
         }
 
         // Station metadata - present in every decoded frame
-        if (this->battery_sensor_ != nullptr)
+        if (this->battery_sensor_ != nullptr && this->buf_.battery_valid)
             this->battery_sensor_->publish_state(this->buf_.battery_ok ? 1.0f : 0.0f);
+        if (this->startup_binary_sensor_ != nullptr)
+            this->startup_binary_sensor_->publish_state(this->buf_.startup);
         // Station ID is a 32-bit identifier - exceeds float precision,
         // so it is exposed as text ("0x%08X") rather than a numeric sensor
         if (this->sensor_id_text_sensor_ != nullptr) {
