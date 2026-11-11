@@ -92,7 +92,7 @@ class Bresser : public PollingComponent  {
 	void set_wind_direction_sensor(sensor::Sensor *wind_direction_sensor) { wind_direction_sensor_ = wind_direction_sensor; }
 	void set_rain_sensor(sensor::Sensor *rain_sensor) { rain_sensor_ = rain_sensor; }
 	void set_wind_gust_sensor(sensor::Sensor *wind_gust_sensor) { wind_gust_sensor_ = wind_gust_sensor; }
-	void set_battery_sensor(sensor::Sensor *battery_sensor) { battery_sensor_ = battery_sensor; }
+	void set_battery_binary_sensor(binary_sensor::BinarySensor *battery_binary_sensor) { battery_binary_sensor_ = battery_binary_sensor; }
 	void set_startup_binary_sensor(binary_sensor::BinarySensor *startup_binary_sensor) { startup_binary_sensor_ = startup_binary_sensor; }
 	void set_sensor_id_text_sensor(text_sensor::TextSensor *sensor_id_text_sensor) { sensor_id_text_sensor_ = sensor_id_text_sensor; }
 	void set_foreign_sensor_ids_text_sensor(text_sensor::TextSensor *foreign_sensor_ids_text_sensor) { foreign_sensor_ids_text_sensor_ = foreign_sensor_ids_text_sensor; }
@@ -160,7 +160,7 @@ class Bresser : public PollingComponent  {
 	sensor::Sensor *wind_direction_sensor_{nullptr};
 	sensor::Sensor *rain_sensor_{nullptr};
 	sensor::Sensor *wind_gust_sensor_{nullptr};
-	sensor::Sensor *battery_sensor_{nullptr};
+	binary_sensor::BinarySensor *battery_binary_sensor_{nullptr};
 	binary_sensor::BinarySensor *startup_binary_sensor_{nullptr};
 	text_sensor::TextSensor *sensor_id_text_sensor_{nullptr};
 	text_sensor::TextSensor *foreign_sensor_ids_text_sensor_{nullptr};

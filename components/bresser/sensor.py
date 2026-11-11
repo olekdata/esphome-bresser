@@ -58,9 +58,7 @@ CONFIG_SCHEMA = cv.Schema(
             accuracy_decimals=1,
             state_class=STATE_CLASS_MEASUREMENT,
         ),
-        cv.Optional('battery_ok'): sensor.sensor_schema(
-            accuracy_decimals=0,
-        ),
+        # battery moved to the binary_sensor platform (On = battery good)
         cv.Optional('sensor_type'): sensor.sensor_schema(
             accuracy_decimals=0,
         ),
@@ -115,10 +113,6 @@ async def to_code(config):
     if wind_gust_config := config.get('wind_gust'):
         sens = await sensor.new_sensor(wind_gust_config)
         cg.add(var.set_wind_gust_sensor(sens))
-
-    if battery_ok_config := config.get('battery_ok'):
-        sens = await sensor.new_sensor(battery_ok_config)
-        cg.add(var.set_battery_sensor(sens))
 
     if sensor_type_config := config.get('sensor_type'):
         sens = await sensor.new_sensor(sensor_type_config)

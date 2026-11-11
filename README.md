@@ -78,8 +78,6 @@ sensor:
       name: "Kierunek wiatru"
     rain:
       name: "Deszcz"
-    battery_ok:
-      name: "Bateria"
     sensor_type:
       name: "Typ czujnika"
     channel:
@@ -109,6 +107,11 @@ text_sensor:
 
 binary_sensor:
   - platform: bresser
+    # On = battery good, Off = the station reports a low battery. Only
+    # some frame types carry the flag (6-in-1 rain frames do not), so the
+    # entity updates when a frame carrying it arrives.
+    battery:
+      name: "Bateria"
     # On while the station has been running for less than ~1 h since its
     # last power-up/reset (battery change) - explains a rain counter that
     # reads 0.0 mm right after the batteries were swapped.
@@ -127,6 +130,10 @@ binary_sensor:
 - The station ID is a 32-bit identifier which exceeds float precision,
   hence the `text_sensor` platform for it.
 - Omitting any entity from YAML is safe - all publishes are null-checked.
+- Battery and startup flags live in the new `binary_sensor` platform
+  (`battery:` - On means the battery is good; `startup:`). `battery:`
+  replaces the old `battery_ok` sensor, which reported the same thing
+  as 1/0.
 - Battery flag (6-in-1): `msg[13]` bit 1 is `battery_good`, not the
   commonly assumed bit 3 of `msg[6]` - that one is the startup flag, so
   reading it as battery reports "low" for about an hour after every

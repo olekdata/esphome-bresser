@@ -593,8 +593,8 @@ static const char *TAG = "Bresser";
         }
 
         // Station metadata - present in every decoded frame
-        if (this->battery_sensor_ != nullptr && this->buf_.battery_valid)
-            this->battery_sensor_->publish_state(this->buf_.battery_ok ? 1.0f : 0.0f);
+        if (this->battery_binary_sensor_ != nullptr && this->buf_.battery_valid)
+            this->battery_binary_sensor_->publish_state(this->buf_.battery_ok);
         if (this->startup_binary_sensor_ != nullptr)
             this->startup_binary_sensor_->publish_state(this->buf_.startup);
         // Station ID is a 32-bit identifier - exceeds float precision,
