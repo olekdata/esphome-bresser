@@ -29,7 +29,7 @@ esp8266:
 external_components:
   source:
     type: git
-    url: https://github.com/marekwichtowski/esphome-bresser
+    url: https://github.com/olekdata/esphome-bresser
     ref: main
 
 bresser:
